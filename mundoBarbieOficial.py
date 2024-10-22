@@ -81,14 +81,14 @@ print(resultado)
 
 
 # Cálculo da heurística utilizando distância Manhattan
-def heuristica(ponto_atual, ponto_destino):
+def calcular_heuristica(ponto_atual, ponto_destino):
     return abs(ponto_atual[0] - ponto_destino[0]) + abs(ponto_atual[1] - ponto_destino[1])
 
 def calcular_custo_movimento(terreno):
     custos = {
-        1: 1,   # Asfalto
-        3: 3,   # Terra
-        5: 5,   # Grama
+        1: 1,  # Asfalto
+        3: 3,  # Terra
+        5: 5,  # Grama
         10: 10,  # Paralelepípedo
         0: float('inf')  # Edifício (intransponível)
     }
@@ -121,7 +121,7 @@ def a_star(mapa, inicio, destino):
 
                 if vizinho not in custo_acumulado or novo_custo < custo_acumulado[vizinho]:
                     custo_acumulado[vizinho] = novo_custo
-                    prioridade = novo_custo + heuristica(vizinho, destino)
+                    prioridade = novo_custo + calcular_heuristica(vizinho, destino)
                     heapq.heappush(filas_prioridade, (prioridade, vizinho))
                     caminho[vizinho] = ponto_atual
 
@@ -150,4 +150,3 @@ mapa = carregar_matriz(arquivo_txt)
 mapa = definir_posicao_personagens(mapa)
 # mapa = exibir_percurso (mapa, percurso)
 exibir_mapa(mapa)
-
