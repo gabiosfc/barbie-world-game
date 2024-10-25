@@ -61,11 +61,19 @@ class Node:
     def __lt__(self, other):
         return self.f < other.f
 
+# Sortear amigos aceitos
 def sortear_amigos_aceitos():
     global amigos_aceitos
     if not amigos_aceitos:
         amigos_aceitos = random.sample(amigos, 3)
     return amigos_aceitos
+
+# Definir amigos aceitos manualmente
+def definir_amigos_aceitos(manual_amigos):
+    global amigos_aceitos
+    amigos_aceitos = manual_amigos
+    return amigos_aceitos
+
 
 def load_grid_from_file(file):
     with open(file, "r") as f:
@@ -274,7 +282,23 @@ def obter_cor(valor):
 if __name__ == "__main__":
     grid = load_grid_from_file("mapa2.txt")
     start_node = Node(19, 23, grid[23][19])
-    sortear_amigos_aceitos()
+    
+    # Escolha entre sorteio ou definição manual
+    escolha = input("Deseja sortear os amigos aceitos (1) ou definir manualmente (2)? ")
+    
+    if escolha == "1":
+        sortear_amigos_aceitos()
+    elif escolha == "2":
+        amigos_aceitos_manual = [
+            (13, 5), 
+            (9, 10), 
+            (15, 36)
+        ]
+        definir_amigos_aceitos(amigos_aceitos_manual)
+    else:
+        print("Escolha inválida. Sorteando amigos.")
+        sortear_amigos_aceitos()
+    
     print("Amigos Aceitos:", amigos_aceitos)
     visitar_amigos(start_node)
 
