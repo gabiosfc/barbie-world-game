@@ -5,12 +5,12 @@ import math
 
 barbie = (23, 19)
 amigos = [
-    (5, 13), # amigo 1
-    (10, 9), # amigo 2
-    (36, 15), # amigo 3
-    (6, 35), # amigo 4
-    (24, 38), # amigo 5
-    (37, 37) # amigo 6
+    (5, 13), 
+    (10, 9), 
+    (36, 15), 
+    (6, 35), 
+    (24, 38), 
+    (37, 37) 
 ]
 
 # Função para atribuir a cor conforme o valor da célula
@@ -38,22 +38,17 @@ def carregar_matriz(arquivo_txt):
 
 # Função para exibir o mapa
 def exibir_mapa(mapa):
-    # Configurar a figura e os eixos
     fig, ax = plt.subplots()
-
-    # Exibir a matriz com as cores correspondentes
     for i in range(len(mapa)):
         for j in range(len(mapa[0])):
             valor = mapa[i][j]
             cor = obter_cor(valor)
             rect = plt.Rectangle([j, len(mapa) - i - 1], 1, 1, facecolor=cor)
             ax.add_patch(rect)
-
-    # Exibir o mapa
     plt.xlim(0, len(mapa[0]))
     plt.ylim(0, len(mapa))
-    plt.gca().set_aspect('equal', adjustable='box')  # Manter a proporção
-    plt.axis('off')  # Remover os eixos
+    plt.gca().set_aspect('equal', adjustable='box')  
+    plt.axis('off')  
     plt.show()
 
 # Coordenadas de posições da Barbie e amigos
@@ -68,64 +63,124 @@ def exibir_percurso(mapa, percurso):
     for x, y in percurso:
         casa_atual = mapa[x][y]
         mapa [x][y] = 100
-        exibir_mapa(mapa) # inserir delay
+        exibir_mapa(mapa) 
         mapa [x][y] = casa_atual
     return mapa
 
 # Sorteio amigos que responderão SIM
 def sortear_amigos(qtd):
-    return random.sample(amigos, qtd)  # Sorteia diretamente os amigos
-# Sortear 3 amigos
-resultado = sortear_amigos(3)
-print(resultado)
+    return random.sample(amigos, qtd)
 
 
-# Cálculo da heurística utilizando distância Manhattan
-def calcular_heuristica(ponto_atual, ponto_destino):
-    return abs(ponto_atual[0] - ponto_destino[0]) + abs(ponto_atual[1] - ponto_destino[1])
+# Cálculo da menor heurística com base na distância Manhattan para qualquer destino
+def calcular_heuristica(ponto_atual, destinos):
+    return min(abs(ponto_atual[0] - destino[0]) + abs(ponto_atual[1] - destino[1]) for destino in destinos)
 
-def calcular_custo_movimento(terreno):
-    custos = {
-        1: 1,  # Asfalto
-        3: 3,  # Terra
-        5: 5,  # Grama
-        10: 10,  # Paralelepípedo
-        0: float('inf')  # Edifício (intransponível)
-    }
-    return custos[terreno]
 
-# Algoritmo A* levando em conta os diferentes terrenos
-def a_star(mapa, inicio, destino):
-    filas_prioridade = []
-    heapq.heappush(filas_prioridade, (0, inicio))
-    custo_acumulado = {inicio: 0}
-    caminho = {inicio: None}
+# Algoritmo A*
+def calcular_astar(mapa, inicio, destinos):
+    # Fronteira (Fila de prioridade)
+    fronteira = []
+    heapq.heappush(fronteira, (0, inicio))
 
-    while filas_prioridade:
-        _, ponto_atual = heapq.heappop(filas_prioridade)
+    # Mapear de onde viemos e o custo até agora
+    veio_de = {}
+    custo_ate_aqui = {}
+    veio_de[inicio] = None
+    custo_ate_aqui[inicio] = 0
 
-        if ponto_atual == destino:
-            caminho_final = []
-            while ponto_atual:
-                caminho_final.append(ponto_atual)
-                ponto_atual = caminho[ponto_atual]
-            return caminho_final[::-1]
+    while fronteira:
+        # Pega o ponto de menor custo estimado da fronteira
+        _, ponto_atual = heapq.heappop(fronteira)
 
-        vizinhos = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        for movimento in vizinhos:
+        # Se chegamos ao último destino, terminamos
+        if ponto_atual in destinos:
+            destinos.remove(ponto_atual)  # Remove destino da lista
+            if not destinos:  # Se visitamos todos os destinos
+                break
+
+        # Movimentos possíveis (cima, baixo, esquerda, direita)
+        movimentos = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        for movimento in movimentos:
             vizinho = (ponto_atual[0] + movimento[0], ponto_atual[1] + movimento[1])
 
+            # Verifica se o vizinho está dentro dos limites do mapa
             if 0 <= vizinho[0] < len(mapa) and 0 <= vizinho[1] < len(mapa[0]):
                 terreno = mapa[vizinho[0]][vizinho[1]]
-                novo_custo = custo_acumulado[ponto_atual] + calcular_custo_movimento(terreno)
+                # Verifica se é um terreno acessível (diferente de 0)
+                if terreno < 999999999:  # Apenas terrenos com custo maior que 0 são acessíveis
+                    novo_custo = custo_ate_aqui[ponto_atual] + terreno
+                    # Se o custo do vizinho for menor ou não existe, atualize
+                    if vizinho not in custo_ate_aqui or novo_custo < custo_ate_aqui[vizinho]:
+                        custo_ate_aqui[vizinho] = novo_custo
+                        prioridade = novo_custo + calcular_heuristica(vizinho, destinos)
+                        heapq.heappush(fronteira, (prioridade, vizinho))
+                        veio_de[vizinho] = ponto_atual
+                else:
+                    print(f"Vizinho {vizinho} com custo {terreno} ignorado (edifício).")
 
-                if vizinho not in custo_acumulado or novo_custo < custo_acumulado[vizinho]:
-                    custo_acumulado[vizinho] = novo_custo
-                    prioridade = novo_custo + calcular_heuristica(vizinho, destino)
-                    heapq.heappush(filas_prioridade, (prioridade, vizinho))
-                    caminho[vizinho] = ponto_atual
+            # Dentro do loop que verifica vizinhos
+            print(f"Verificando vizinho: {vizinho} com custo: {terreno}")
 
-    return None
+    if destinos:
+        print("Erro: Nenhum destino possível encontrado.")
+    else:
+        print("Todos os destinos foram alcançados.")
+    return veio_de, custo_ate_aqui
+    
+
+# Função para reconstruir o caminho baseado no dicionário veio_de
+def reconstruir_caminho(veio_de, inicio, final):
+    caminho = []
+    ponto_atual = final
+    while ponto_atual != inicio:
+        caminho.append(ponto_atual)
+        ponto_atual = veio_de[ponto_atual]
+    caminho.append(inicio)  # Adicionar o ponto de início no final
+    caminho.reverse()  # Inverter o caminho para ficar do início ao final
+    return caminho
+
+def calcular_percurso_barbie(mapa, barbie, amigos):
+    todos_destinos = amigos 
+    gambi = amigos
+    
+    
+    percurso_completo = []
+
+    # Barbie começa na posição inicial e visita todos os amigos
+    posicao_atual = barbie
+    while todos_destinos:
+        # Calcula o A* do ponto atual até o próximo destino mais próximo
+        veio_de, custo_ate_aqui = calcular_astar(mapa, posicao_atual, gambi)
+
+
+        input("Pressione Enter para continuar...")
+
+
+        # Verifique se custo_ate_aqui está preenchido e se há destinos válidos
+        if custo_ate_aqui:
+            destinos_validos = [destino for destino in todos_destinos if destino in custo_ate_aqui]
+
+            
+            if destinos_validos:
+                destino_mais_proximo = min(destinos_validos, key=lambda destino: custo_ate_aqui[destino])
+            else:
+                print("Erro: Nenhum destino possível encontrado.")
+                break
+        else:
+            print("Erro: custo_ate_aqui está vazio.")
+            break
+        
+        # Reconstrói o caminho até o próximo destino
+        caminho = reconstruir_caminho(veio_de, posicao_atual, destino_mais_proximo)
+        percurso_completo.extend(caminho)  # Adiciona o caminho ao percurso completo
+
+        # Atualiza a posição atual e remove o destino da lista
+        posicao_atual = destino_mais_proximo
+        todos_destinos.remove(destino_mais_proximo)
+
+    return percurso_completo
+
 
 
 
@@ -145,8 +200,29 @@ def a_star(mapa, inicio, destino):
 # Arquivo do qual a matriz será carregada
 arquivo_txt = 'mapa.txt'
 
+# Sortear 3 amigos
+amigos_sorteados = sortear_amigos(3)
+print(amigos_sorteados)
+
+# Definição dos 3 amigos de forma manual
+amigos_manual =  [
+    (5, 13), # amigo 1
+    (10, 9), # amigo 2
+    (36, 15), # amigo 3
+    (6, 35), # amigo 4
+    (24, 38), # amigo 5
+    (37, 37) # amigo 6
+]
+
+
+
 # Carregar a matriz e exibir o mapa
 mapa = carregar_matriz(arquivo_txt)
 mapa = definir_posicao_personagens(mapa)
 # mapa = exibir_percurso (mapa, percurso)
-exibir_mapa(mapa)
+# exibir_mapa(mapa)
+# Chamando a função para calcular o percurso completo
+
+percurso_barbie = calcular_percurso_barbie(mapa, barbie, amigos)
+# Exibir o percurso no mapa
+mapa = exibir_percurso(mapa, percurso_barbie)
