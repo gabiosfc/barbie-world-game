@@ -11,7 +11,7 @@ tile_size = 20
 # Variáveis globais
 grid = []  # Armazena o grid carregado
 amigos_aceitos = []  # Armazena os amigos que aceitarão o convite
-start_node = None  # Posição inicial da Barbie
+no_inicial = None  # Posição inicial da Barbie
 
 # Dicionário de custo por tipo de terreno
 terreno_custo = {
@@ -75,7 +75,7 @@ def definir_amigos_aceitos(manual_amigos):
     return amigos_aceitos
 
 
-def load_grid_from_file(file):
+def carregar_arquivo(file):
     with open(file, "r") as f:
         data = f.read().strip().split("\n")
         return [list(map(int, line.strip().split(','))) for line in data]
@@ -83,10 +83,12 @@ def load_grid_from_file(file):
 def calcular_heuristica(ponto_atual, destinos):
     return min(abs(ponto_atual[0] - destino.x) + abs(ponto_atual[1] - destino.y) for destino in destinos)
 
-def astar(start, destinos, grid):
+def calcular_astar(start, destinos, grid):
     open_list = MinHeap()
     closed_set = set()
     destino_coords = [(destino.x, destino.y) for destino in destinos]
+    
+    start_time = time.time()  # Início do tempo de execução
     
     start.g = 0
     start.h = calcular_heuristica((start.x, start.y), destinos)
@@ -101,87 +103,96 @@ def astar(start, destinos, grid):
             while temp:
                 path.append((temp.x, temp.y))
                 temp = temp.parent
+            end_time = time.time()  # Fim do tempo de execução
+            print(f"Tempo de execução do A*: {end_time - start_time:.4f} segundos")
             return path[::-1]
-        
         closed_set.add((current_node.x, current_node.y))
-        
-        neighbors = [
+        vizinhos = [
             (current_node.x + 1, current_node.y),
             (current_node.x - 1, current_node.y),
             (current_node.x, current_node.y + 1),
             (current_node.x, current_node.y - 1)
         ]
-        
-        for nx, ny in neighbors:
+        for nx, ny in vizinhos:
             if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid):
-                neighbor = Node(nx, ny, grid[ny][nx])
-                if terreno_custo[neighbor.cost] == float("inf") or (neighbor.x, neighbor.y) in closed_set:
+                vizinho = Node(nx, ny, grid[ny][nx])
+                if terreno_custo[vizinho.cost] == float("inf") or (vizinho.x, vizinho.y) in closed_set:
                     continue
-                
-                tentative_g = current_node.g + terreno_custo[neighbor.cost]
-                if tentative_g < neighbor.g or (neighbor.x, neighbor.y) not in {n[1] for n in open_list.heap}:
-                    neighbor.g = tentative_g
-                    neighbor.h = calcular_heuristica((neighbor.x, neighbor.y), destinos)
-                    neighbor.f = neighbor.g + neighbor.h
-                    neighbor.parent = current_node
-                    open_list.insert(neighbor)
-    
+                tentative_g = current_node.g + terreno_custo[vizinho.cost]
+                if tentative_g < vizinho.g or (vizinho.x, vizinho.y) not in {n[1] for n in open_list.heap}:
+                    vizinho.g = tentative_g
+                    vizinho.h = calcular_heuristica((vizinho.x, vizinho.y), destinos)
+                    vizinho.f = vizinho.g + vizinho.h
+                    vizinho.parent = current_node
+                    open_list.insert(vizinho)
     return []  # Nenhum caminho encontrado
 
-def visitar_amigos(start_node):
+def visitar_amigos(no_inicial):
     global amigos_aceitos
     path_total = []
     amigos_nao_visitados = amigos.copy()
     amigos_convencidos = 0
+    tempo_total_execucao_astar = 0  # Variável para armazenar o tempo total de execução do A*
 
     while amigos_convencidos < 3 and amigos_nao_visitados:
         destinos = [Node(amigo[0], amigo[1], grid[amigo[1]][amigo[0]]) for amigo in amigos_nao_visitados]
-        path = astar(start_node, destinos, grid)
         
+        start_time_astar = time.time()  # Início do tempo de execução do A*
+        path = calcular_astar(no_inicial, destinos, grid)
+        end_time_astar = time.time()  # Fim do tempo de execução do A*
+        tempo_execucao_astar = end_time_astar - start_time_astar
+        tempo_total_execucao_astar += tempo_execucao_astar  # Somar o tempo de execução ao tempo total
+        
+        print(f"Tempo de execução do A*: {tempo_execucao_astar:.4f} segundos")
+
         if not path:
             print("Nenhum caminho encontrado para os amigos restantes")
             return
 
-        # Encontrar o próximo amigo com menor custo
         for i, (x, y) in enumerate(path):
             if (x, y) in amigos_nao_visitados:
                 proximo_amigo = (x, y)
                 proximo_caminho = path[:i+1]
                 break
-        
+
         path_total.extend(proximo_caminho)
         if proximo_amigo in amigos_aceitos:
             amigos_convencidos += 1
             print(f"Convencido: ({proximo_amigo[0]}, {proximo_amigo[1]})")
         else:
             print(f"Recusado: ({proximo_amigo[0]}, {proximo_amigo[1]})")
-        
+
         amigos_nao_visitados.remove(proximo_amigo)
-        start_node = Node(proximo_amigo[0], proximo_amigo[1], grid[proximo_amigo[1]][proximo_amigo[0]])
+        no_inicial = Node(proximo_amigo[0], proximo_amigo[1], grid[proximo_amigo[1]][proximo_amigo[0]])
 
     return_home = Node(19, 23, grid[23][19])
-    path = astar(start_node, [return_home], grid)
+    start_time_astar = time.time()  # Início do tempo de execução do A* para o retorno
+    path = calcular_astar(no_inicial, [return_home], grid)
+    end_time_astar = time.time()  # Fim do tempo de execução do A* para o retorno
+    tempo_execucao_astar = end_time_astar - start_time_astar
+    tempo_total_execucao_astar += tempo_execucao_astar  # Somar o tempo de execução ao tempo total
+    
     if path:
         path_total.extend(path)
     else:
         print("Nenhum caminho encontrado de volta para casa")
 
-    animate_path(path_total, 50, None, True)
+    print(f"Tempo total de execução do A*: {tempo_total_execucao_astar:.4f} segundos")
+    desenhar_caminho(path_total, 50, None, True, tempo_total_execucao_astar)
 
 
-def animate_path(path, delay=50, amigo=None, returning=False):
+def desenhar_caminho(path, delay=50, amigo=None, returning=False, tempo_total_execucao_astar=0):
     total_cost = 0
     start_time = time.time()
     
     plt.ion()
-    fig = plt.figure(figsize=(14, 12))  # Aumentar a altura da figura para acomodar o texto abaixo
+    fig = plt.figure(figsize=(14, 7))  # Aumentar a largura da figura para acomodar o texto ao lado
     
-    # Dividir a figura em duas partes, uma para o mapa e outra para o console
-    gs = gridspec.GridSpec(3, 1, height_ratios=[4, 1, 0.5])  # Ajustar os ratios para espaço do console
+    # Dividir a figura em duas colunas, uma para o mapa e outra para o console
+    gs = gridspec.GridSpec(1, 2, width_ratios=[3, 1])  # Ajustar os ratios para espaço do console
     
     ax = plt.subplot(gs[0])
     console_ax = plt.subplot(gs[1])
-    status_ax = plt.subplot(gs[2])
     
     exibir_mapa_interativo(grid, ax)  # Mostrar o mapa apenas uma vez
     
@@ -191,21 +202,24 @@ def animate_path(path, delay=50, amigo=None, returning=False):
     console_ax.set_ylim(0, 1)
     console_ax.axis("off")
     
-    status_ax.set_xlim(0, 1)
-    status_ax.set_ylim(0, 1)
-    status_ax.axis("off")
-    
     console_texts = {
-        "amigos": console_ax.text(0.05, 0.9, amigos_text, fontsize=8, color='black', weight='bold'),
-        "movimento": console_ax.text(0.05, 0.7, "", fontsize=8, color='black'),
-        "tempo": console_ax.text(0.05, 0.5, "", fontsize=8, color='black'),
-        "custo_total": console_ax.text(0.05, 0.3, "", fontsize=8, color='black'),
-        "aceitacao": status_ax.text(0.05, 0.1, "", fontsize=8, color='orange')  # Exibir aceitação abaixo
+        "amigos": console_ax.text(0.05, 0.95, amigos_text, fontsize=8, color='black', weight='bold'),
+        "movimento": console_ax.text(0.05, 0.85, "", fontsize=8, color='black'),
+        "tempo": console_ax.text(0.05, 0.75, "", fontsize=8, color='black'),
+        "custo_total": console_ax.text(0.05, 0.65, "", fontsize=8, color='black'),
+        "aceitacao_1": console_ax.text(0.05, 0.55, "", fontsize=8, color='orange'),
+        "aceitacao_2": console_ax.text(0.05, 0.45, "", fontsize=8, color='orange'),
+        "aceitacao_3": console_ax.text(0.05, 0.35, "", fontsize=8, color='orange'),
+        "aceitacao_4": console_ax.text(0.05, 0.25, "", fontsize=8, color='orange'),
+        "aceitacao_5": console_ax.text(0.05, 0.15, "", fontsize=8, color='orange'),
+        "aceitacao_6": console_ax.text(0.05, 0.05, "", fontsize=8, color='orange'),
+        "execucao": console_ax.text(0.05, 0.01, f"Tempo total de execução do A*: {tempo_total_execucao_astar:.4f} segundos", fontsize=8, color='blue')
     }
     
     original_values = {}
     aceitou_amigos = set()
-
+    aceitacoes = []
+    
     for index, (x, y) in enumerate(path):
         # Armazenar o custo da célula atual
         if (x, y) not in original_values:
@@ -218,14 +232,18 @@ def animate_path(path, delay=50, amigo=None, returning=False):
         elapsed_time = time.time() - start_time
         console_texts["tempo"].set_text(f"Tempo de Execução: {elapsed_time:.2f} segundos")
         console_texts["custo_total"].set_text(f"Custo Total: {total_cost}")
-
+        
         # Verificar se chegou em um amigo e mostrar se aceitou
         if (x, y) in amigos and (x, y) not in aceitou_amigos:
             status = "Aceitou" if (x, y) in amigos_aceitos else "Não aceitou"
             aceitou_amigos.add((x, y))
-            aceitou_text = f"Amigo em ({x}, {y}): {status}"
-            console_texts["aceitacao"].set_text(f"{console_texts['aceitacao'].get_text()}\n{aceitou_text}")
-
+            aceitacao_text = f"Amigo em ({x}, {y}): {status}"
+            aceitacoes.append(aceitacao_text)
+            
+            # Atualizar as mensagens de aceitação no console
+            for i in range(min(len(aceitacoes), 6)):
+                console_texts[f"aceitacao_{i + 1}"].set_text(aceitacoes[i])
+        
         # Marcar a célula como ocupada
         grid[y][x] = 100
         
@@ -248,6 +266,10 @@ def animate_path(path, delay=50, amigo=None, returning=False):
         console_texts["custo_total"].set_text(f"Encontrou amigo: ({amigo[0]}, {amigo[1]}) - Custo total: {total_cost}")
     elif returning:
         console_texts["custo_total"].set_text(f"Retornou para casa - Custo total: {total_cost}")
+    
+    # Adicionar alerta ao retornar para casa
+    if returning:
+        print("Barbie voltou para casa!")
 
 
 def exibir_mapa_interativo(mapa, ax):
@@ -280,8 +302,8 @@ def obter_cor(valor):
         return 'black'
 
 if __name__ == "__main__":
-    grid = load_grid_from_file("mapa2.txt")
-    start_node = Node(19, 23, grid[23][19])
+    grid = carregar_arquivo("mapaOficial.txt")
+    no_inicial = Node(19, 23, grid[23][19])
     
     # Escolha entre sorteio ou definição manual
     escolha = input("Deseja sortear os amigos aceitos (1) ou definir manualmente (2)? ")
@@ -300,7 +322,8 @@ if __name__ == "__main__":
         sortear_amigos_aceitos()
     
     print("Amigos Aceitos:", amigos_aceitos)
-    visitar_amigos(start_node)
+    visitar_amigos(no_inicial)
+
 
 
 
