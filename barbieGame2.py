@@ -101,38 +101,48 @@ def calcular_astar(start, destinos, grid):
     return [], 0
 
 def visitar_amigos(no_inicial, amigos_aceitos, grid):
-    caminho_total = [] #caminho para armazenar o caminho percorrido
+    caminho_total = []  # caminho para armazenar o caminho percorrido
     amigos_nao_visitados = amigos.copy()
     tempo_total_execucao_astar = 0  # Variável para armazenar o tempo total de execução do A*
-    while amigos_nao_visitados: #enquanto existirem amigos não visitados, continua o loop
+    amigos_convencidos = 0  # Variável para contar o número de amigos convencidos
+
+    while amigos_nao_visitados and amigos_convencidos < 3:  # enquanto existirem amigos não visitados e menos de 3 amigos convencidos, continua o loop
         destinos = [Node(amigo[0], amigo[1], grid[amigo[1]][amigo[0]]) for amigo in amigos_nao_visitados]
         caminho, tempo_execucao_astar = calcular_astar(no_inicial, destinos, grid)
         tempo_total_execucao_astar += tempo_execucao_astar  # Somar o tempo de execução ao tempo total
 
         if not caminho:
             print("Nenhum caminho encontrado para os amigos restantes")
-            return
-        for i, (x, y) in enumerate(caminho): #se encontrar amigo não visitado, define como próximo amigo
+            break
+
+        for i, (x, y) in enumerate(caminho):  # se encontrar amigo não visitado, define como próximo amigo
             if (x, y) in amigos_nao_visitados:
                 proximo_amigo = (x, y)
                 proximo_caminho = caminho[:i+1]
                 break
+
         caminho_total.extend(proximo_caminho)
-        if proximo_amigo in amigos_aceitos: #verifica se o amigo encontrado está em amigos aceitos
+        if proximo_amigo in amigos_aceitos:  # verifica se o amigo encontrado está em amigos aceitos
             print(f"Convencido: ({proximo_amigo[0]}, {proximo_amigo[1]})")
+            amigos_convencidos += 1  # Incrementa o contador de amigos convencidos
         else:
             print(f"Recusado: ({proximo_amigo[0]}, {proximo_amigo[1]})")
-        amigos_nao_visitados.remove(proximo_amigo) #remove amigo encontrado
+
+        amigos_nao_visitados.remove(proximo_amigo)  # remove amigo encontrado
         no_inicial = Node(proximo_amigo[0], proximo_amigo[1], grid[proximo_amigo[1]][proximo_amigo[0]])
-    return_home = Node(19, 23, grid[23][19])
-    caminho, tempo_execucao_astar = calcular_astar(no_inicial, [return_home], grid) #calcular o caminho de volta para casa
+
+    # Planejar o caminho de volta para casa
+    return_home = Node(7, 31, grid[31][7])
+    caminho, tempo_execucao_astar = calcular_astar(no_inicial, [return_home], grid)  # calcular o caminho de volta para casa
     tempo_total_execucao_astar += tempo_execucao_astar  # Somar o tempo de execução ao tempo total
     if caminho:
         caminho_total.extend(caminho)
     else:
         print("Nenhum caminho encontrado de volta para casa")
+
     print(f"Tempo total de execução do A*: {tempo_total_execucao_astar:.4f} segundos")
     desenhar_caminho(caminho_total, 50, None, amigos_aceitos, tempo_total_execucao_astar)
+
 
 def desenhar_caminho(caminho, delay=50, amigo=None, amigos_aceitos=[], tempo_total_execucao_astar=0, status_amigos=[]):
     total_cost = 0
@@ -179,7 +189,7 @@ def desenhar_caminho(caminho, delay=50, amigo=None, amigos_aceitos=[], tempo_tot
             status_y -= 0.05
         ax.scatter(x + 0.5, (len(grid) - y) - 0.5, color='pink', s=10)
         plt.draw()
-        plt.pause(0.00001) 
+        plt.pause(0.1) 
     plt.ioff()
     plt.show()
 
@@ -211,7 +221,7 @@ def obter_cor(valor):
 
 if __name__ == "__main__":
     grid = carregar_arquivo("mapaOficial.txt")
-    no_inicial = Node(19, 23, grid[23][19])
+    no_inicial = Node(7, 31, grid[31][7])
     amigos = [(13, 5), (9, 10), (15, 36), (35, 6), (38, 24), (37, 37)]
     amigos_aceitos = AmigosAceitos()
     escolha = input("Deseja sortear os amigos aceitos (1) ou definir manualmente (2)? ")
@@ -219,7 +229,7 @@ if __name__ == "__main__":
     if escolha == "1":
         amigos_aceitos.sortear(amigos)
     elif escolha == "2":
-        amigos_aceitos_manual = [(35, 6), (38, 24), (37, 37)]
+        amigos_aceitos_manual = [(15, 36), (38, 24), (37, 37)]
         amigos_aceitos.definir(amigos_aceitos_manual)
 
     amigos_aceitos_lista = amigos_aceitos.amigos_aceitos
